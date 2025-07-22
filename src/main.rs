@@ -5,22 +5,12 @@ use std::time::Duration;
 // Import from our library
 use raster_rust::{
     Color, Display,
-    display::{HEIGHT, PITCH, draw_rect},
+    display::{draw_pixel, draw_rect},
 };
-
-fn update_color_buffer(buffer: &mut [u8]) {
-    // Clear buffer to black
-    buffer.fill(0);
-
-    draw_rect(buffer, 200, 150, 400, 300, Color::ORANGE);
-}
 
 pub fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let mut display = Display::new(&sdl_context)?;
-
-    // Create color buffer - this is now managed by main
-    let mut color_buffer = vec![0u8; PITCH * HEIGHT];
 
     'mainloop: loop {
         // Handle input - moved back to main
@@ -35,11 +25,29 @@ pub fn main() -> Result<(), String> {
             }
         }
 
-        // Update what to draw - application logic in main
-        update_color_buffer(&mut color_buffer);
+        // Get direct access to screen pixels - NO COLOR BUFFER NEEDED!
+        let pixel_buffer = display.get_pixel_buffer()?;
 
-        // Render the buffer - display module just handles rendering
-        display.render(&color_buffer)?;
+        // Clear screen to black by writing directly to screen memory
+        pixel_buffer.fill(0);
+
+        // Draw directly to screen memory - NO COPYING!
+        draw_rect(pixel_buffer, 200, 150, 400, 300, Color::ORANGE);
+
+        // Draw some individual pixels to demonstrate pixel-level control
+        for i in 0..100 {
+            draw_pixel(pixel_buffer, 100 + i, 100, Color::RED);
+            draw_pixel(pixel_buffer, 100, 100 + i, Color::GREEN);
+            draw_pixel(pixel_buffer, 100 + i, 200, Color::BLUE);
+        }
+
+        // Draw a simple diagonal line with pixels
+        for i in 0..50 {
+            draw_pixel(pixel_buffer, 50 + i, 50 + i, Color::WHITE);
+        }
+
+        // Present the surface to screen
+        display.present()?;
 
         std::thread::sleep(Duration::from_millis(16)); // ~60 FPS idle loop
     }
